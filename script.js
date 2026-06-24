@@ -435,41 +435,24 @@ window.addEventListener('resize', () => {
     updateTabIndicator(activeTab);
 });
 
-// --- Swipe Gesture for Tabs ---
-let touchStartX = 0;
-let touchStartY = 0;
+// --- Drag Gesture on Tab Bar ---
+const tabBar = document.getElementById('tab-bar');
 
-document.addEventListener('touchstart', e => {
-    touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
-}, {passive: true});
-
-document.addEventListener('touchend', e => {
-    const touchEndX = e.changedTouches[0].screenX;
-    const touchEndY = e.changedTouches[0].screenY;
-    
-    const deltaX = touchEndX - touchStartX;
-    const deltaY = touchEndY - touchStartY;
-    
-    // Check if horizontal swipe
-    if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
-        let currentIndex = Array.from(tabItems).findIndex(tab => tab.classList.contains('active'));
-        if (currentIndex === -1) return;
+if (tabBar) {
+    tabBar.addEventListener('touchmove', (e) => {
+        // Prevent default scrolling when dragging on the tab bar
+        e.preventDefault();
         
-        if (deltaX > 0) {
-            // Swipe right -> go left (previous tab)
-            if (currentIndex > 0) {
-                tabItems[currentIndex].classList.remove('active');
-                tabItems[currentIndex - 1].classList.add('active');
-                updateTabIndicator(tabItems[currentIndex - 1]);
-            }
-        } else {
-            // Swipe left -> go right (next tab)
-            if (currentIndex < tabItems.length - 1) {
-                tabItems[currentIndex].classList.remove('active');
-                tabItems[currentIndex + 1].classList.add('active');
-                updateTabIndicator(tabItems[currentIndex + 1]);
+        const touch = e.touches[0];
+        const elementUnderFinger = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (elementUnderFinger) {
+            const tabItem = elementUnderFinger.closest('.tab-item');
+            if (tabItem && !tabItem.classList.contains('active')) {
+                tabItems.forEach(t => t.classList.remove('active'));
+                tabItem.classList.add('active');
+                updateTabIndicator(tabItem);
             }
         }
-    }
-}, {passive: true});
+    }, { passive: false });
+}
