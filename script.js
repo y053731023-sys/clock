@@ -396,3 +396,41 @@ function applySumForce(realMs, forceSum) {
     }
     return bestTime;
 }
+
+// --- Bottom Tab Bar Sliding Logic ---
+const tabItems = document.querySelectorAll('.tab-item');
+const tabIndicator = document.getElementById('active-tab-indicator');
+
+function updateTabIndicator(activeTab) {
+    if (!activeTab || !tabIndicator) return;
+    
+    const tabLeft = activeTab.offsetLeft;
+    const tabWidth = activeTab.offsetWidth;
+    const centerX = tabLeft + (tabWidth / 2);
+    
+    const indicatorWidth = 95;
+    const indicatorLeft = centerX - (indicatorWidth / 2);
+    
+    tabIndicator.style.transform = `translateX(${indicatorLeft}px)`;
+}
+
+// Initialize position
+let activeTab = document.querySelector('.tab-item.active');
+if (activeTab) {
+    // Small delay to ensure layout is complete
+    setTimeout(() => updateTabIndicator(activeTab), 50);
+}
+
+// Add click listeners to tabs
+tabItems.forEach(tab => {
+    tab.addEventListener('click', () => {
+        tabItems.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        updateTabIndicator(tab);
+    });
+});
+
+window.addEventListener('resize', () => {
+    activeTab = document.querySelector('.tab-item.active');
+    updateTabIndicator(activeTab);
+});
