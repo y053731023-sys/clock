@@ -167,6 +167,7 @@ body {
     right: 20px;
     height: 70px;
     background-color: var(--tab-bg);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 35px;
     display: flex;
     justify-content: space-around;
@@ -214,7 +215,7 @@ body {
     bottom: 6px;
     left: 50%;
     transform: translateX(-50%);
-    width: 80px;
+    width: 95px;
     background-color: #3a3a3c;
     border-radius: 30px;
     z-index: -1;
