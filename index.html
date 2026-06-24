@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <title>碼錶</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="app-container">
+        <div class="display-section">
+            <h1 id="time-display">00:00.00</h1>
+        </div>
+        
+        <div class="controls-section">
+            <button id="lap-reset-btn" class="btn btn-secondary" disabled>分圈</button>
+            <div class="page-indicators">
+                <span class="dot active"></span>
+                <span class="dot"></span>
+            </div>
+            <button id="start-stop-btn" class="btn btn-primary">開始</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="laps-section">
+            <ul id="laps-list"></ul>
+        </div>
+        
+        <!-- Bottom Tab Bar -->
+        <div class="tab-bar">
+            <div class="tab-item">
+                <div class="icon-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M2.5 12h19M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"></path>
+                    </svg>
+                </div>
+                <span>世界時鐘</span>
+            </div>
+            <div class="tab-item">
+                <div class="icon-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="13" r="8"></circle>
+                        <path d="M12 9v4l2 2M5 4L2 7M19 4l3 3"></path>
+                    </svg>
+                </div>
+                <span>鬧鐘</span>
+            </div>
+            <div class="tab-item active">
+                <div class="icon-container">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10 2h4v2h-4z"/>
+                        <path d="M12 22c-5.523 0-10-4.477-10-10 0-5.523 4.477-10 10-10 5.523 0 10 4.477 10 10 0 5.523-4.477 10-10 10z"/>
+                        <path fill="var(--tab-bg)" d="M11.25 7h1.5v6h-1.5z"/>
+                        <circle fill="var(--tab-bg)" cx="12" cy="12" r="1.5"/>
+                    </svg>
+                </div>
+                <span>碼錶</span>
+            </div>
+            <div class="tab-item">
+                <div class="icon-container">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                </div>
+                <span>計時器</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Magic Settings Modal -->
+    <div id="magic-modal" class="hidden">
+        <div class="magic-modal-content">
+            <div class="magic-header">
+                <h2 class="magic-title">🔮 強選模式 (FORCE SETTINGS)</h2>
+                <button id="magic-close">完成</button>
+            </div>
+            
+            <div class="magic-row" style="border-bottom:none; padding-bottom:0;">
+                <label>啟用魔術模式</label>
+                <label class="switch">
+                    <input type="checkbox" id="magic-enable">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="magic-row" style="border-bottom:none; padding-bottom:0; padding-top:15px;">
+                <label>強選模式</label>
+                <select id="magic-mode" class="magic-select">
+                    <option value="sum">秒數總和 (Sum Force)</option>
+                    <option value="total">總時間 (Total Force)</option>
+                    <option value="laps">分圈毫秒 (Dynamic Laps)</option>
+                    <option value="realtime">真實時間 (Real-Time Force)</option>
+                </select>
+            </div>
+
+            <div class="force-section" id="section-sum">
+                <div class="force-section-title">秒數總和強選 (Seconds Sum Force)</div>
+                <label class="force-label">目標總和 (秒 + 毫秒 = ?)</label>
+                <div class="force-input-container">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-sum" class="force-input-box" placeholder="20">
+                </div>
+            </div>
+
+            <div class="force-section" id="section-total">
+                <div class="force-section-title">總時間強選 (Total Force)</div>
+                <div class="force-time-container">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-mm" class="force-input-box small" placeholder="04">
+                    <span class="colon">:</span>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-ss" class="force-input-box small" placeholder="15">
+                    <span class="dot">.</span>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-cc" class="force-input-box small" placeholder="22">
+                </div>
+            </div>
+
+            <div class="force-section" id="section-laps">
+                <div class="force-section-title">分圈毫秒強選 (Dynamic Laps)</div>
+                <div id="force-laps-container" class="force-laps-flex">
+                    <!-- Lap inputs dynamically added here -->
+                </div>
+                <div class="force-laps-controls">
+                    <button id="magic-remove-lap" class="lap-ctrl-btn remove">-</button>
+                    <button id="magic-add-lap" class="lap-ctrl-btn add">+</button>
+                </div>
+            </div>
+
+            <div class="force-section" id="section-realtime">
+                <div class="force-section-title">當下時間強選 (Current Time Force)</div>
+                <div class="realtime-grid">
+                    <div class="realtime-col">
+                        <label>增加分鐘</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="force-rt-offset" class="force-input-box" placeholder="0" value="0">
+                    </div>
+                    <div class="realtime-col">
+                        <label>格式</label>
+                        <select id="force-rt-format" class="magic-select">
+                            <option value="12">12制</option>
+                            <option value="24">24制</option>
+                        </select>
+                    </div>
+                    <div class="realtime-col">
+                        <label>容錯(秒)</label>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="force-rt-tolerance" class="force-input-box" placeholder="3" value="3">
+                    </div>
+                </div>
+                <div class="realtime-desc">
+                    當秒數落在 目標±容錯 秒內時，<br>
+                    強制停止於 當下時間 (秒=時, 毫秒=分)
+                </div>
+            </div>
+            
+            <div class="magic-footer">
+                <button id="magic-save" class="btn-primary">儲存設定</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
