@@ -15,7 +15,7 @@
     --separator-color: #2c2c2e;
     
     --tab-bg: #1c1c1e;
-    --tab-inactive: #8e8e93;
+    --tab-inactive: #ffffff;
     --tab-active: #ff9f0a;
 }
 
@@ -188,7 +188,7 @@ body {
 }
 
 .icon-container {
-    width: 48px;
+    width: 64px;
     height: 32px;
     border-radius: 16px;
     display: flex;
@@ -198,7 +198,7 @@ body {
 }
 
 .tab-item.active .icon-container {
-    background-color: rgba(255, 159, 10, 0.2); /* Orange translucent highlight */
+    background-color: #3a3a3c;
 }
 
 .tab-item svg {
