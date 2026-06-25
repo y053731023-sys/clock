@@ -162,7 +162,7 @@ body {
 /* Floating Tab Bar at the bottom */
 .tab-bar {
     position: fixed;
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    bottom: env(safe-area-inset-bottom);
     left: 20px;
     right: 20px;
     height: 70px;

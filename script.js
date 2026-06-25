@@ -283,25 +283,21 @@ const openMagic = () => {
 };
 
 if (stopwatchTab) {
-    let longPressTimer;
-    
-    const startLongPress = (e) => {
-        longPressTimer = setTimeout(() => {
+    let lastTapTime = 0;
+
+    stopwatchTab.addEventListener('touchstart', (e) => {
+        const currentTime = new Date().getTime();
+        const tapLength = currentTime - lastTapTime;
+        if (tapLength > 0 && tapLength < 400) {
             openMagic();
-        }, 1000);
-    };
+            e.preventDefault();
+        }
+        lastTapTime = currentTime;
+    });
 
-    const cancelLongPress = () => {
-        clearTimeout(longPressTimer);
-    };
-
-    stopwatchTab.addEventListener('mousedown', startLongPress);
-    stopwatchTab.addEventListener('touchstart', startLongPress);
-
-    stopwatchTab.addEventListener('mouseup', cancelLongPress);
-    stopwatchTab.addEventListener('mouseleave', cancelLongPress);
-    stopwatchTab.addEventListener('touchend', cancelLongPress);
-    stopwatchTab.addEventListener('touchcancel', cancelLongPress);
+    stopwatchTab.addEventListener('dblclick', (e) => {
+        openMagic();
+    });
     
     stopwatchTab.addEventListener('contextmenu', (e) => {
         e.preventDefault();
