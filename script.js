@@ -422,12 +422,63 @@ if (activeTab) {
 }
 
 // Add click listeners to tabs
+const views = document.querySelectorAll('.view');
 tabItems.forEach(tab => {
     tab.addEventListener('click', () => {
         tabItems.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         updateTabIndicator(tab);
+        
+        const targetId = tab.getAttribute('data-target');
+        if (targetId) {
+            views.forEach(v => v.classList.remove('active'));
+            const targetView = document.getElementById(targetId);
+            if (targetView) targetView.classList.add('active');
+        }
     });
+});
+
+// --- Timer Picker Scroll Logic ---
+const pickerColumns = document.querySelectorAll('.picker-column');
+
+pickerColumns.forEach(column => {
+    const updateSelected = () => {
+        const columnRect = column.getBoundingClientRect();
+        const centerY = columnRect.top + columnRect.height / 2;
+        let closestItem = null;
+        let minDistance = Infinity;
+
+        const items = column.querySelectorAll('.picker-item');
+        items.forEach(item => {
+            const itemRect = item.getBoundingClientRect();
+            // Only consider items that have height (visible)
+            if (itemRect.height === 0) return;
+            
+            const itemCenterY = itemRect.top + itemRect.height / 2;
+            const distance = Math.abs(itemCenterY - centerY);
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestItem = item;
+            }
+        });
+
+        if (closestItem) {
+            items.forEach(item => {
+                if (item === closestItem) {
+                    item.classList.add('selected');
+                    item.classList.remove('dimmed');
+                } else {
+                    item.classList.add('dimmed');
+                    item.classList.remove('selected');
+                }
+            });
+        }
+    };
+
+    column.addEventListener('scroll', updateSelected);
+    // Call once to initialize correctly
+    setTimeout(updateSelected, 50);
 });
 
 window.addEventListener('resize', () => {
@@ -452,6 +503,13 @@ if (tabBar) {
                 tabItems.forEach(t => t.classList.remove('active'));
                 tabItem.classList.add('active');
                 updateTabIndicator(tabItem);
+                
+                const targetId = tabItem.getAttribute('data-target');
+                if (targetId) {
+                    views.forEach(v => v.classList.remove('active'));
+                    const targetView = document.getElementById(targetId);
+                    if (targetView) targetView.classList.add('active');
+                }
             }
         }
     }, { passive: false });

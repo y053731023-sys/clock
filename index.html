@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#000000">
@@ -12,40 +14,229 @@
     <link rel="stylesheet" href="styles.css">
     <link rel="manifest" href="manifest.json">
 </head>
+
 <body>
     <div class="app-container">
-        <div class="display-section">
-            <h1 id="time-display">00:00.00</h1>
-        </div>
-        
-        <div class="controls-section">
-            <button id="lap-reset-btn" class="btn btn-secondary" disabled>分圈</button>
-            <div class="page-indicators">
-                <span class="dot active"></span>
-                <span class="dot"></span>
+        <!-- Views Container -->
+        <div class="views-container">
+            <!-- World Clock View -->
+            <div id="view-worldclock" class="view">
+                <div class="nav-bar">
+                    <button class="nav-btn">編輯</button>
+                    <button class="nav-btn icon-btn">+</button>
+                </div>
+                <h1 class="large-title">世界時鐘</h1>
+                <div class="list-container">
+                    <div class="list-item world-clock-item">
+                        <div class="wc-left">
+                            <span class="wc-offset">今天 +0小時</span>
+                            <span class="wc-city">台北</span>
+                        </div>
+                        <div class="wc-right">
+                            <span class="wc-ampm">下午</span>
+                            <span class="wc-time">7:17</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <button id="start-stop-btn" class="btn btn-primary">開始</button>
+
+            <!-- Alarm View -->
+            <div id="view-alarm" class="view">
+                <div class="nav-bar">
+                    <button class="nav-btn">編輯</button>
+                    <button class="nav-btn icon-btn">+</button>
+                </div>
+                <h1 class="large-title">鬧鐘</h1>
+
+                <div class="section-title">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"
+                        style="margin-right: 5px; vertical-align: middle; margin-top: -3px;">
+                        <path
+                            d="M19 7h-6V6c0-1.1-.9-2-2-2H5C3.9 4 3 4.9 3 6v11h2v-2h14v2h2v-8c0-1.1-.9-2-2-2zm-8-1h6v1h-6V6zM5 6h4v3H5V6zm14 7H5v-2h14v2z" />
+                    </svg>
+                    睡眠｜起床鬧鐘
+                </div>
+                <div class="list-container">
+                    <div class="list-item">
+                        <div class="alarm-info">
+                            <span class="alarm-time no-alarm">沒有鬧鐘</span>
+                            <span class="alarm-label">明天早上</span>
+                        </div>
+                        <button class="btn-change">更改</button>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 25px;">其他</div>
+                <div class="list-container">
+                    <div class="list-item">
+                        <div class="alarm-info">
+                            <div class="alarm-time-row"><span class="alarm-ampm">上午</span> <span
+                                    class="alarm-time">6:00</span></div>
+                            <span class="alarm-label">鬧鐘</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="list-item">
+                        <div class="alarm-info">
+                            <div class="alarm-time-row"><span class="alarm-ampm">上午</span> <span
+                                    class="alarm-time">6:20</span></div>
+                            <span class="alarm-label">鬧鐘</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="list-item">
+                        <div class="alarm-info">
+                            <div class="alarm-time-row"><span class="alarm-ampm">上午</span> <span
+                                    class="alarm-time">6:30</span></div>
+                            <span class="alarm-label">鬧鐘</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stopwatch View -->
+            <div id="view-stopwatch" class="view active">
+                <div class="display-section">
+                    <h1 id="time-display">00:00.00</h1>
+                </div>
+
+                <div class="controls-section">
+                    <button id="lap-reset-btn" class="btn btn-secondary" disabled>分圈</button>
+                    <div class="page-indicators">
+                        <span class="dot active"></span>
+                        <span class="dot"></span>
+                    </div>
+                    <button id="start-stop-btn" class="btn btn-primary">開始</button>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="laps-section">
+                    <ul id="laps-list"></ul>
+                </div>
+            </div>
+
+            <!-- Timer View -->
+            <div id="view-timer" class="view">
+                <div class="nav-bar">
+                    <button class="nav-btn">編輯</button>
+                </div>
+                <h1 class="large-title">計時器</h1>
+
+                <div class="timer-picker-container">
+                    <div class="picker-overlay"></div>
+                    
+                    <div class="picker-group">
+                        <div class="picker-column">
+                            <div class="picker-item dimmed"></div>
+                            <div class="picker-item dimmed"></div>
+                            <div class="picker-item dimmed"></div>
+                            <div class="picker-item selected">0</div>
+                            <div class="picker-item dimmed">1</div>
+                            <div class="picker-item dimmed">2</div>
+                            <div class="picker-item dimmed">3</div>
+                        </div>
+                        <div class="picker-label">小時</div>
+                    </div>
+                    
+                    <div class="picker-group">
+                        <div class="picker-column">
+                            <div class="picker-item dimmed">7</div>
+                            <div class="picker-item dimmed">8</div>
+                            <div class="picker-item dimmed">9</div>
+                            <div class="picker-item selected">10</div>
+                            <div class="picker-item dimmed">11</div>
+                            <div class="picker-item dimmed">12</div>
+                            <div class="picker-item dimmed">13</div>
+                        </div>
+                        <div class="picker-label">分鐘</div>
+                    </div>
+                    
+                    <div class="picker-group">
+                        <div class="picker-column">
+                            <div class="picker-item dimmed"></div>
+                            <div class="picker-item dimmed"></div>
+                            <div class="picker-item dimmed"></div>
+                            <div class="picker-item selected">0</div>
+                            <div class="picker-item dimmed">1</div>
+                            <div class="picker-item dimmed">2</div>
+                            <div class="picker-item dimmed">3</div>
+                        </div>
+                        <div class="picker-label">秒</div>
+                    </div>
+                </div>
+
+                <div class="controls-section">
+                    <button class="btn btn-secondary" disabled>取消</button>
+                    <button class="btn btn-primary">開始</button>
+                </div>
+
+                <div class="list-container timer-settings">
+                    <div class="list-item">
+                        <span class="setting-label">標籤</span>
+                        <span class="setting-value">計時器</span>
+                    </div>
+                    <div class="list-item">
+                        <span class="setting-label">當計時結束</span>
+                        <span class="setting-value">放射 <span class="chevron">></span></span>
+                    </div>
+                </div>
+
+                <div class="section-title" style="margin-top: 25px;">最近項目</div>
+                <div class="recent-timer-list">
+                    <div class="recent-timer-item">
+                        <div class="recent-info">
+                            <span class="recent-large-time">36:30</span>
+                            <span class="recent-small-time">36分鐘 30秒</span>
+                        </div>
+                        <button class="btn-start-recent">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"
+                                style="margin-left: 3px;">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="recent-timer-item">
+                        <div class="recent-info">
+                            <span class="recent-large-time">15:30</span>
+                            <span class="recent-small-time">15分鐘 30秒</span>
+                        </div>
+                        <button class="btn-start-recent">
+                            <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"
+                                style="margin-left: 3px;">
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="divider"></div>
-
-        <div class="laps-section">
-            <ul id="laps-list"></ul>
-        </div>
-        
         <!-- Bottom Tab Bar -->
         <div class="tab-bar" id="tab-bar">
             <div class="active-tab-indicator" id="active-tab-indicator"></div>
-            <div class="tab-item">
+            <div class="tab-item" data-target="view-worldclock">
                 <div class="icon-container">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <circle cx="12" cy="12" r="9"></circle>
-                        <path d="M2.5 12h19M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z"></path>
+                        <path
+                            d="M2.5 12h19M12 3a15.3 15.3 0 0 1 4 9 15.3 15.3 0 0 1-4 9 15.3 15.3 0 0 1-4-9 15.3 15.3 0 0 1 4-9z">
+                        </path>
                     </svg>
                 </div>
                 <span>世界時鐘</span>
             </div>
-            <div class="tab-item">
+            <div class="tab-item" data-target="view-alarm">
                 <div class="icon-container">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <circle cx="12" cy="13" r="8"></circle>
@@ -54,18 +245,19 @@
                 </div>
                 <span>鬧鐘</span>
             </div>
-            <div class="tab-item active">
+            <div class="tab-item active" data-target="view-stopwatch">
                 <div class="icon-container">
                     <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M10 2h4v2h-4z"/>
-                        <path d="M12 22c-5.523 0-10-4.477-10-10 0-5.523 4.477-10 10-10 5.523 0 10 4.477 10 10 0 5.523-4.477 10-10 10z"/>
-                        <path fill="#3a3a3c" d="M11.25 7h1.5v6h-1.5z"/>
-                        <circle fill="#3a3a3c" cx="12" cy="12" r="1.5"/>
+                        <path d="M10 2h4v2h-4z" />
+                        <path
+                            d="M12 22c-5.523 0-10-4.477-10-10 0-5.523 4.477-10 10-10 5.523 0 10 4.477 10 10 0 5.523-4.477 10-10 10z" />
+                        <path fill="#3a3a3c" d="M11.25 7h1.5v6h-1.5z" />
+                        <circle fill="#3a3a3c" cx="12" cy="12" r="1.5" />
                     </svg>
                 </div>
                 <span>碼錶</span>
             </div>
-            <div class="tab-item">
+            <div class="tab-item" data-target="view-timer">
                 <div class="icon-container">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <circle cx="12" cy="12" r="9"></circle>
@@ -76,7 +268,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Magic Settings Modal -->
     <div id="magic-modal" class="hidden">
         <div class="magic-modal-content">
@@ -84,7 +276,7 @@
                 <h2 class="magic-title">🔮 強選模式 (FORCE SETTINGS)</h2>
                 <button id="magic-close">完成</button>
             </div>
-            
+
             <div class="magic-row" style="border-bottom:none; padding-bottom:0;">
                 <label>啟用魔術模式</label>
                 <label class="switch">
@@ -107,18 +299,22 @@
                 <div class="force-section-title">秒數總和強選 (Seconds Sum Force)</div>
                 <label class="force-label">目標總和 (秒 + 毫秒 = ?)</label>
                 <div class="force-input-container">
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-sum" class="force-input-box" placeholder="20">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-sum"
+                        class="force-input-box" placeholder="20">
                 </div>
             </div>
 
             <div class="force-section" id="section-total">
                 <div class="force-section-title">總時間強選 (Total Force)</div>
                 <div class="force-time-container">
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-mm" class="force-input-box small" placeholder="04">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-mm"
+                        class="force-input-box small" placeholder="04">
                     <span class="colon">:</span>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-ss" class="force-input-box small" placeholder="15">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-ss"
+                        class="force-input-box small" placeholder="15">
                     <span class="dot">.</span>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-cc" class="force-input-box small" placeholder="22">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-cc"
+                        class="force-input-box small" placeholder="22">
                 </div>
             </div>
 
@@ -138,7 +334,8 @@
                 <div class="realtime-grid">
                     <div class="realtime-col">
                         <label>增加分鐘</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="force-rt-offset" class="force-input-box" placeholder="0" value="0">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="force-rt-offset"
+                            class="force-input-box" placeholder="0" value="0">
                     </div>
                     <div class="realtime-col">
                         <label>格式</label>
@@ -149,7 +346,8 @@
                     </div>
                     <div class="realtime-col">
                         <label>容錯(秒)</label>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="force-rt-tolerance" class="force-input-box" placeholder="3" value="3">
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" id="force-rt-tolerance"
+                            class="force-input-box" placeholder="3" value="3">
                     </div>
                 </div>
                 <div class="realtime-desc">
@@ -157,7 +355,7 @@
                     強制停止於 當下時間 (秒=時, 毫秒=分)
                 </div>
             </div>
-            
+
             <div class="magic-footer">
                 <button id="magic-save" class="btn-primary">儲存設定</button>
             </div>
@@ -166,4 +364,5 @@
 
     <script src="script.js"></script>
 </body>
+
 </html>
