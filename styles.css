@@ -670,10 +670,14 @@ input:checked + .slider:before { transform: translateX(22px); }
     align-items: flex-end;
     width: 40%;
     padding-right: 4px;
-    padding-block: 66px; /* Half of container height (90) minus half of item height (24) */
     overflow-y: scroll;
     scrollbar-width: none;
     scroll-snap-type: y mandatory;
+}
+.picker-spacer {
+    height: 66px;
+    flex-shrink: 0;
+    width: 100%;
 }
 .picker-column::-webkit-scrollbar {
     display: none;

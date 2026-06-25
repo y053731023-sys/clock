@@ -451,18 +451,26 @@ tabItems.forEach(tab => {
 const pickerColumns = document.querySelectorAll('.picker-column');
 
 pickerColumns.forEach(column => {
+    // Add spacer divs to fix iOS scroll snapping
+    const topSpacer = document.createElement('div');
+    topSpacer.className = 'picker-spacer';
+    const bottomSpacer = document.createElement('div');
+    bottomSpacer.className = 'picker-spacer';
+    
+    column.insertBefore(topSpacer, column.firstChild);
+    column.appendChild(bottomSpacer);
+
     const updateSelected = () => {
         const columnRect = column.getBoundingClientRect();
         const centerY = columnRect.top + columnRect.height / 2;
+        
         let closestItem = null;
         let minDistance = Infinity;
 
+        // Only check actual picker items, not spacers
         const items = column.querySelectorAll('.picker-item');
         items.forEach(item => {
             const itemRect = item.getBoundingClientRect();
-            // Only consider items that have height (visible)
-            if (itemRect.height === 0) return;
-            
             const itemCenterY = itemRect.top + itemRect.height / 2;
             const distance = Math.abs(itemCenterY - centerY);
 
@@ -472,16 +480,13 @@ pickerColumns.forEach(column => {
             }
         });
 
+        items.forEach(item => {
+            item.classList.remove('selected');
+            item.classList.add('dimmed');
+        });
         if (closestItem) {
-            items.forEach(item => {
-                if (item === closestItem) {
-                    item.classList.add('selected');
-                    item.classList.remove('dimmed');
-                } else {
-                    item.classList.add('dimmed');
-                    item.classList.remove('selected');
-                }
-            });
+            closestItem.classList.add('selected');
+            closestItem.classList.remove('dimmed');
         }
     };
 
