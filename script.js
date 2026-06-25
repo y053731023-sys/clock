@@ -215,7 +215,7 @@ try {
     }
 } catch(e) {}
 
-const timerTab = document.querySelector('.tab-item:last-child');
+const stopwatchTab = document.querySelector('.tab-item[data-target="view-stopwatch"]');
 const magicModal = document.getElementById('magic-modal');
 const magicClose = document.getElementById('magic-close');
 const magicSave = document.getElementById('magic-save');
@@ -282,17 +282,29 @@ const openMagic = () => {
     renderLaps();
 };
 
-if (timerTab) {
-    timerTab.addEventListener('dblclick', openMagic);
-    let lastTap = 0;
-    timerTab.addEventListener('touchend', (e) => {
-        const currentTime = new Date().getTime();
-        const tapLength = currentTime - lastTap;
-        if (tapLength < 500 && tapLength > 0) {
+if (stopwatchTab) {
+    let longPressTimer;
+    
+    const startLongPress = (e) => {
+        longPressTimer = setTimeout(() => {
             openMagic();
-            e.preventDefault();
-        }
-        lastTap = currentTime;
+        }, 1000);
+    };
+
+    const cancelLongPress = () => {
+        clearTimeout(longPressTimer);
+    };
+
+    stopwatchTab.addEventListener('mousedown', startLongPress);
+    stopwatchTab.addEventListener('touchstart', startLongPress);
+
+    stopwatchTab.addEventListener('mouseup', cancelLongPress);
+    stopwatchTab.addEventListener('mouseleave', cancelLongPress);
+    stopwatchTab.addEventListener('touchend', cancelLongPress);
+    stopwatchTab.addEventListener('touchcancel', cancelLongPress);
+    
+    stopwatchTab.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
     });
 }
 
@@ -406,12 +418,9 @@ function updateTabIndicator(activeTab) {
     
     const tabLeft = activeTab.offsetLeft;
     const tabWidth = activeTab.offsetWidth;
-    const centerX = tabLeft + (tabWidth / 2);
     
-    const indicatorWidth = 95;
-    const indicatorLeft = centerX - (indicatorWidth / 2);
-    
-    tabIndicator.style.transform = `translateX(${indicatorLeft}px)`;
+    tabIndicator.style.width = `${tabWidth}px`;
+    tabIndicator.style.transform = `translateX(${tabLeft}px)`;
 }
 
 // Initialize position
@@ -477,8 +486,17 @@ pickerColumns.forEach(column => {
     };
 
     column.addEventListener('scroll', updateSelected);
-    // Call once to initialize correctly
-    setTimeout(updateSelected, 50);
+    // Call once to initialize correctly and set scroll position
+    setTimeout(() => {
+        updateSelected();
+        const initialSelected = column.querySelector('.picker-item.selected');
+        if (initialSelected) {
+            // Force the scroll position to align the selected item in the center
+            const containerCenter = column.clientHeight / 2;
+            const itemCenter = initialSelected.offsetTop + (initialSelected.offsetHeight / 2);
+            column.scrollTop = itemCenter - containerCenter;
+        }
+    }, 50);
 });
 
 window.addEventListener('resize', () => {
