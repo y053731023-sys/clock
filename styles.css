@@ -110,6 +110,8 @@ body {
 .page-indicators {
     display: flex;
     gap: 8px;
+    padding: 10px 20px;
+    cursor: pointer;
 }
 
 .dot {

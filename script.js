@@ -69,6 +69,16 @@ function startStop() {
                 if (diff <= toleranceMs) {
                     finalElapsed = targetMs;
                 }
+            } else if (magicConfig.mode === 'pause_ms' && magicConfig.pauseMs !== null) {
+                const currentSeconds = Math.floor(finalElapsed / 1000);
+                finalElapsed = (currentSeconds * 1000) + (magicConfig.pauseMs * 10);
+            } else if (magicConfig.mode === 'laps' && magicConfig.dynamicLaps && laps.length < magicConfig.dynamicLaps.length) {
+                const targetCC = magicConfig.dynamicLaps[laps.length];
+                const previousTotal = laps.length > 0 ? laps[laps.length - 1].totalTime : 0;
+                const currentLapTime = finalElapsed - previousTotal;
+                const currentSeconds = Math.floor(currentLapTime / 1000);
+                const forcedLapTime = (currentSeconds * 1000) + (targetCC * 10);
+                finalElapsed = previousTotal + forcedLapTime;
             }
         }
         
@@ -199,7 +209,8 @@ let magicConfig = {
     dynamicLaps: [],
     rtOffset: 0,
     rtFormat: '12',
-    rtTolerance: 3
+    rtTolerance: 3,
+    pauseMs: null
 };
 
 try {
@@ -226,6 +237,9 @@ const sectionSum = document.getElementById('section-sum');
 const sectionTotal = document.getElementById('section-total');
 const sectionLaps = document.getElementById('section-laps');
 const sectionRealtime = document.getElementById('section-realtime');
+const sectionPauseMs = document.getElementById('section-pause_ms');
+
+const forcePauseMsInput = document.getElementById('force-pause-ms-input');
 
 const forceSumInput = document.getElementById('force-sum');
 const forceTotalMm = document.getElementById('force-total-mm');
@@ -245,6 +259,7 @@ const updateSections = () => {
     sectionTotal.style.display = magicMode.value === 'total' ? 'block' : 'none';
     sectionLaps.style.display = magicMode.value === 'laps' ? 'block' : 'none';
     if (sectionRealtime) sectionRealtime.style.display = magicMode.value === 'realtime' ? 'block' : 'none';
+    if (sectionPauseMs) sectionPauseMs.style.display = magicMode.value === 'pause_ms' ? 'block' : 'none';
 };
 
 if (magicMode) {
@@ -278,6 +293,7 @@ const openMagic = () => {
     if (forceRtOffset) forceRtOffset.value = magicConfig.rtOffset !== undefined ? magicConfig.rtOffset : 0;
     if (forceRtFormat) forceRtFormat.value = magicConfig.rtFormat !== undefined ? magicConfig.rtFormat : '12';
     if (forceRtTolerance) forceRtTolerance.value = magicConfig.rtTolerance !== undefined ? magicConfig.rtTolerance : 3;
+    if (forcePauseMsInput) forcePauseMsInput.value = magicConfig.pauseMs !== null && magicConfig.pauseMs !== undefined ? magicConfig.pauseMs : '';
     
     renderLaps();
 };
@@ -376,33 +392,52 @@ if (magicSave) {
         magicConfig.rtOffset = (forceRtOffset && forceRtOffset.value !== '') ? parseInt(forceRtOffset.value, 10) : 0;
         magicConfig.rtFormat = forceRtFormat ? forceRtFormat.value : '12';
         magicConfig.rtTolerance = (forceRtTolerance && forceRtTolerance.value !== '') ? parseInt(forceRtTolerance.value, 10) : 3;
+        magicConfig.pauseMs = (forcePauseMsInput && forcePauseMsInput.value !== '') ? parseInt(forcePauseMsInput.value, 10) : null;
         
         saveCurrentLaps();
         
         localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
         magicModal.classList.add('hidden');
+        if (typeof updateIndicatorDots === 'function') updateIndicatorDots();
     };
 }
 
 function applySumForce(realMs, forceSum) {
-    let bestTime = realMs;
-    let minDiff = Infinity;
     let baseMins = Math.floor(realMs / 60000);
+    let s = Math.floor((realMs % 60000) / 1000);
+    let cc = forceSum - s;
     
-    for (let m = baseMins; m <= baseMins + 1; m++) {
-        for (let s = 0; s < 60; s++) {
-            let cc = forceSum - s;
-            if (cc >= 0 && cc <= 99) {
-                let candidateMs = (m * 60000) + (s * 1000) + (cc * 10);
-                let diff = candidateMs - realMs;
-                if (diff >= 0 && diff < minDiff) {
-                    minDiff = diff;
-                    bestTime = candidateMs;
-                }
-            }
+    if (cc < 0) cc = 0;
+    if (cc > 99) cc = 99;
+    
+    return (baseMins * 60000) + (s * 1000) + (cc * 10);
+}
+
+// --- Hidden Magic Trigger on Page Indicators ---
+const pageIndicators = document.querySelector('.page-indicators');
+
+function updateIndicatorDots() {
+    if (!pageIndicators) return;
+    const dots = pageIndicators.querySelectorAll('.dot');
+    if (dots.length >= 2) {
+        if (magicConfig.enabled) {
+            dots[0].classList.remove('active');
+            dots[1].classList.add('active');
+        } else {
+            dots[0].classList.add('active');
+            dots[1].classList.remove('active');
         }
     }
-    return bestTime;
+}
+
+if (pageIndicators) {
+    updateIndicatorDots();
+    pageIndicators.addEventListener('click', () => {
+        magicConfig.enabled = !magicConfig.enabled;
+        localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
+        updateIndicatorDots();
+        if (magicEnable) magicEnable.checked = magicConfig.enabled;
+    });
 }
 
 // --- Bottom Tab Bar Sliding Logic ---
