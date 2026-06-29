@@ -153,7 +153,6 @@ function lapReset() {
         // Reset
         elapsedTime = 0;
         laps = [];
-        pauseCount = 0;
         updateDisplay();
         lapsList.innerHTML = '';
         lapResetBtn.disabled = true;
@@ -442,6 +441,9 @@ if (magicClose) magicClose.onclick = () => magicModal.classList.add('hidden');
 
 if (magicSave) {
     magicSave.onclick = () => {
+        if (!magicConfig.enabled && magicEnable.checked) {
+            pauseCount = 0;
+        }
         magicConfig.enabled = magicEnable.checked;
         if (magicMode) magicConfig.mode = magicMode.value;
         
@@ -506,6 +508,9 @@ if (pageIndicators) {
     updateIndicatorDots();
     pageIndicators.addEventListener('click', () => {
         magicConfig.enabled = !magicConfig.enabled;
+        if (magicConfig.enabled) {
+            pauseCount = 0;
+        }
         localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
         updateIndicatorDots();
         if (magicEnable) magicEnable.checked = magicConfig.enabled;
