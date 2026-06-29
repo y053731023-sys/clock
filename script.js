@@ -3,6 +3,7 @@ let elapsedTime = 0;
 let timerInterval = null;
 let laps = [];
 let isRunning = false;
+let pauseCount = 0;
 
 const timeDisplay = document.getElementById('time-display');
 const startStopBtn = document.getElementById('start-stop-btn');
@@ -69,9 +70,13 @@ function startStop() {
                 if (diff <= toleranceMs) {
                     finalElapsed = targetMs;
                 }
-            } else if (magicConfig.mode === 'pause_ms' && magicConfig.pauseMs !== null) {
-                const currentSeconds = Math.floor(finalElapsed / 1000);
-                finalElapsed = (currentSeconds * 1000) + (magicConfig.pauseMs * 10);
+            } else if (magicConfig.mode === 'pause_ms' && magicConfig.pauseMsList && magicConfig.pauseMsList.length > 0) {
+                if (pauseCount < magicConfig.pauseMsList.length) {
+                    const currentSeconds = Math.floor(finalElapsed / 1000);
+                    const targetMs = magicConfig.pauseMsList[pauseCount];
+                    finalElapsed = (currentSeconds * 1000) + (targetMs * 10);
+                }
+                pauseCount++;
             } else if (magicConfig.mode === 'laps' && magicConfig.dynamicLaps && laps.length < magicConfig.dynamicLaps.length) {
                 const targetCC = magicConfig.dynamicLaps[laps.length];
                 const previousTotal = laps.length > 0 ? laps[laps.length - 1].totalTime : 0;
@@ -148,6 +153,7 @@ function lapReset() {
         // Reset
         elapsedTime = 0;
         laps = [];
+        pauseCount = 0;
         updateDisplay();
         lapsList.innerHTML = '';
         lapResetBtn.disabled = true;
@@ -210,7 +216,7 @@ let magicConfig = {
     rtOffset: 0,
     rtFormat: '12',
     rtTolerance: 3,
-    pauseMs: null
+    pauseMsList: []
 };
 
 try {
@@ -220,6 +226,7 @@ try {
         if (Array.isArray(parsed.dynamicLaps)) {
             magicConfig = parsed;
             if (!magicConfig.mode) magicConfig.mode = 'sum';
+            if (!magicConfig.pauseMsList) magicConfig.pauseMsList = [];
         } else {
             localStorage.removeItem('magicConfig');
         }
@@ -239,7 +246,9 @@ const sectionLaps = document.getElementById('section-laps');
 const sectionRealtime = document.getElementById('section-realtime');
 const sectionPauseMs = document.getElementById('section-pause_ms');
 
-const forcePauseMsInput = document.getElementById('force-pause-ms-input');
+const forcePauseMsContainer = document.getElementById('force-pause-ms-container');
+const magicAddPauseMs = document.getElementById('magic-add-pause-ms');
+const magicRemovePauseMs = document.getElementById('magic-remove-pause-ms');
 
 const forceSumInput = document.getElementById('force-sum');
 const forceTotalMm = document.getElementById('force-total-mm');
@@ -293,9 +302,9 @@ const openMagic = () => {
     if (forceRtOffset) forceRtOffset.value = magicConfig.rtOffset !== undefined ? magicConfig.rtOffset : 0;
     if (forceRtFormat) forceRtFormat.value = magicConfig.rtFormat !== undefined ? magicConfig.rtFormat : '12';
     if (forceRtTolerance) forceRtTolerance.value = magicConfig.rtTolerance !== undefined ? magicConfig.rtTolerance : 3;
-    if (forcePauseMsInput) forcePauseMsInput.value = magicConfig.pauseMs !== null && magicConfig.pauseMs !== undefined ? magicConfig.pauseMs : '';
     
     renderLaps();
+    renderPauseMs();
 };
 
 if (stopwatchTab) {
@@ -357,6 +366,46 @@ const saveCurrentLaps = () => {
     magicConfig.dynamicLaps = Array.from(lapInputs).map(inp => parseInt(inp.value || 0, 10));
 };
 
+function renderPauseMs() {
+    if (!forcePauseMsContainer) return;
+    forcePauseMsContainer.innerHTML = '';
+    if (!magicConfig.pauseMsList || magicConfig.pauseMsList.length === 0) {
+        magicConfig.pauseMsList = [0];
+    }
+    magicConfig.pauseMsList.forEach((cc, i) => {
+        if (i > 0) {
+            const div = document.createElement('div');
+            div.className = 'lap-divider';
+            div.textContent = '->';
+            forcePauseMsContainer.appendChild(div);
+        }
+        
+        const col = document.createElement('div');
+        col.className = 'lap-item-col';
+        
+        const label = document.createElement('label');
+        label.textContent = `第 ${i + 1} 次`;
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'numeric';
+        input.pattern = '[0-9]*';
+        input.maxLength = 2;
+        input.className = 'force-input-box pause-ms-input-cc';
+        input.value = cc.toString().padStart(2, '0');
+        input.placeholder = '00';
+        
+        col.appendChild(label);
+        col.appendChild(input);
+        forcePauseMsContainer.appendChild(col);
+    });
+}
+
+const saveCurrentPauseMs = () => {
+    const inputs = document.querySelectorAll('.pause-ms-input-cc');
+    magicConfig.pauseMsList = Array.from(inputs).map(inp => parseInt(inp.value || 0, 10));
+};
+
 if (magicAddLap) {
     magicAddLap.onclick = () => {
         saveCurrentLaps();
@@ -371,6 +420,24 @@ if (magicRemoveLap) {
         renderLaps();
     };
 }
+
+if (magicAddPauseMs) {
+    magicAddPauseMs.onclick = () => {
+        saveCurrentPauseMs();
+        magicConfig.pauseMsList.push(0);
+        renderPauseMs();
+    };
+}
+if (magicRemovePauseMs) {
+    magicRemovePauseMs.onclick = () => {
+        saveCurrentPauseMs();
+        if (magicConfig.pauseMsList.length > 1) {
+            magicConfig.pauseMsList.pop();
+        }
+        renderPauseMs();
+    };
+}
+
 if (magicClose) magicClose.onclick = () => magicModal.classList.add('hidden');
 
 if (magicSave) {
@@ -392,9 +459,9 @@ if (magicSave) {
         magicConfig.rtOffset = (forceRtOffset && forceRtOffset.value !== '') ? parseInt(forceRtOffset.value, 10) : 0;
         magicConfig.rtFormat = forceRtFormat ? forceRtFormat.value : '12';
         magicConfig.rtTolerance = (forceRtTolerance && forceRtTolerance.value !== '') ? parseInt(forceRtTolerance.value, 10) : 3;
-        magicConfig.pauseMs = (forcePauseMsInput && forcePauseMsInput.value !== '') ? parseInt(forcePauseMsInput.value, 10) : null;
         
         saveCurrentLaps();
+        saveCurrentPauseMs();
         
         localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
         magicModal.classList.add('hidden');
@@ -403,6 +470,11 @@ if (magicSave) {
 }
 
 function applySumForce(realMs, forceSum) {
+    let totalSeconds = Math.floor(realMs / 1000);
+    if (totalSeconds >= forceSum) {
+        return realMs;
+    }
+
     let baseMins = Math.floor(realMs / 60000);
     let s = Math.floor((realMs % 60000) / 1000);
     let cc = forceSum - s;
