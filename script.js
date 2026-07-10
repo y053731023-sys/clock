@@ -77,13 +77,6 @@ function startStop() {
                     finalElapsed = (currentSeconds * 1000) + (targetMs * 10);
                 }
                 pauseCount++;
-            } else if (magicConfig.mode === 'laps' && magicConfig.dynamicLaps && laps.length < magicConfig.dynamicLaps.length) {
-                const targetCC = magicConfig.dynamicLaps[laps.length];
-                const previousTotal = laps.length > 0 ? laps[laps.length - 1].totalTime : 0;
-                const currentLapTime = finalElapsed - previousTotal;
-                const currentSeconds = Math.floor(currentLapTime / 1000);
-                const forcedLapTime = (currentSeconds * 1000) + (targetCC * 10);
-                finalElapsed = previousTotal + forcedLapTime;
             }
         }
         
@@ -117,24 +110,6 @@ function lapReset() {
         let currentLapTime = realElapsed - previousTotal;
         let currentTotal = realElapsed;
         let lapTime = currentLapTime;
-
-        if (typeof magicConfig !== 'undefined' && magicConfig.enabled && magicConfig.mode === 'laps' && magicConfig.dynamicLaps && laps.length < magicConfig.dynamicLaps.length) {
-            const targetCC = magicConfig.dynamicLaps[laps.length];
-            const currentSeconds = Math.floor(currentLapTime / 1000);
-            let forcedLapTime = (currentSeconds * 1000) + (targetCC * 10);
-            
-            if (forcedLapTime < currentLapTime) {
-                forcedLapTime += 1000;
-            }
-            
-            const forcedElapsed = previousTotal + forcedLapTime;
-            const diff = realElapsed - forcedElapsed;
-            
-            startTime += diff;
-            
-            currentTotal = Date.now() - startTime + elapsedTime;
-            lapTime = forcedLapTime;
-        }
         
         laps.push({ time: lapTime, totalTime: currentTotal });
         
@@ -211,7 +186,6 @@ let magicConfig = {
     mode: 'sum',
     sumForce: null,
     totalForceMs: null,
-    dynamicLaps: [],
     rtOffset: 0,
     rtFormat: '12',
     rtTolerance: 3,
@@ -222,26 +196,20 @@ try {
     const saved = localStorage.getItem('magicConfig');
     if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.dynamicLaps)) {
-            magicConfig = parsed;
-            if (!magicConfig.mode) magicConfig.mode = 'sum';
-            if (!magicConfig.pauseMsList) magicConfig.pauseMsList = [];
-        } else {
-            localStorage.removeItem('magicConfig');
-        }
+        magicConfig = parsed;
+        if (!magicConfig.mode) magicConfig.mode = 'sum';
+        if (!magicConfig.pauseMsList) magicConfig.pauseMsList = [];
     }
 } catch(e) {}
 
 const stopwatchTab = document.querySelector('.tab-item[data-target="view-stopwatch"]');
 const magicModal = document.getElementById('magic-modal');
-const magicClose = document.getElementById('magic-close');
 const magicSave = document.getElementById('magic-save');
 const magicEnable = document.getElementById('magic-enable');
 
 const magicMode = document.getElementById('magic-mode');
 const sectionSum = document.getElementById('section-sum');
 const sectionTotal = document.getElementById('section-total');
-const sectionLaps = document.getElementById('section-laps');
 const sectionRealtime = document.getElementById('section-realtime');
 const sectionPauseMs = document.getElementById('section-pause_ms');
 
@@ -253,9 +221,6 @@ const forceSumInput = document.getElementById('force-sum');
 const forceTotalMm = document.getElementById('force-total-mm');
 const forceTotalSs = document.getElementById('force-total-ss');
 const forceTotalCc = document.getElementById('force-total-cc');
-const forceLapsContainer = document.getElementById('force-laps-container');
-const magicAddLap = document.getElementById('magic-add-lap');
-const magicRemoveLap = document.getElementById('magic-remove-lap');
 
 const forceRtOffset = document.getElementById('force-rt-offset');
 const forceRtFormat = document.getElementById('force-rt-format');
@@ -265,7 +230,6 @@ const updateSections = () => {
     if (!sectionSum) return;
     sectionSum.style.display = magicMode.value === 'sum' ? 'block' : 'none';
     sectionTotal.style.display = magicMode.value === 'total' ? 'block' : 'none';
-    sectionLaps.style.display = magicMode.value === 'laps' ? 'block' : 'none';
     if (sectionRealtime) sectionRealtime.style.display = magicMode.value === 'realtime' ? 'block' : 'none';
     if (sectionPauseMs) sectionPauseMs.style.display = magicMode.value === 'pause_ms' ? 'block' : 'none';
 };
@@ -302,7 +266,6 @@ const openMagic = () => {
     if (forceRtFormat) forceRtFormat.value = magicConfig.rtFormat !== undefined ? magicConfig.rtFormat : '12';
     if (forceRtTolerance) forceRtTolerance.value = magicConfig.rtTolerance !== undefined ? magicConfig.rtTolerance : 3;
     
-    renderLaps();
     renderPauseMs();
 };
 
@@ -327,43 +290,6 @@ if (stopwatchTab) {
         e.preventDefault();
     });
 }
-
-function renderLaps() {
-    if (!forceLapsContainer) return;
-    forceLapsContainer.innerHTML = '';
-    magicConfig.dynamicLaps.forEach((cc, i) => {
-        if (i > 0) {
-            const div = document.createElement('div');
-            div.className = 'lap-divider';
-            div.textContent = '-';
-            forceLapsContainer.appendChild(div);
-        }
-        
-        const col = document.createElement('div');
-        col.className = 'lap-item-col';
-        
-        const label = document.createElement('label');
-        label.textContent = `Lap ${i + 1}`;
-        
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.inputMode = 'numeric';
-        input.pattern = '[0-9]*';
-        input.maxLength = 2;
-        input.className = 'force-input-box lap-input-cc';
-        input.value = cc.toString().padStart(2, '0');
-        input.placeholder = '00';
-        
-        col.appendChild(label);
-        col.appendChild(input);
-        forceLapsContainer.appendChild(col);
-    });
-}
-
-const saveCurrentLaps = () => {
-    const lapInputs = document.querySelectorAll('.lap-input-cc');
-    magicConfig.dynamicLaps = Array.from(lapInputs).map(inp => parseInt(inp.value || 0, 10));
-};
 
 function renderPauseMs() {
     if (!forcePauseMsContainer) return;
@@ -405,21 +331,6 @@ const saveCurrentPauseMs = () => {
     magicConfig.pauseMsList = Array.from(inputs).map(inp => parseInt(inp.value || 0, 10));
 };
 
-if (magicAddLap) {
-    magicAddLap.onclick = () => {
-        saveCurrentLaps();
-        magicConfig.dynamicLaps.push(0);
-        renderLaps();
-    };
-}
-if (magicRemoveLap) {
-    magicRemoveLap.onclick = () => {
-        saveCurrentLaps();
-        magicConfig.dynamicLaps.pop();
-        renderLaps();
-    };
-}
-
 if (magicAddPauseMs) {
     magicAddPauseMs.onclick = () => {
         saveCurrentPauseMs();
@@ -436,8 +347,6 @@ if (magicRemovePauseMs) {
         renderPauseMs();
     };
 }
-
-if (magicClose) magicClose.onclick = () => magicModal.classList.add('hidden');
 
 if (magicSave) {
     magicSave.onclick = () => {
@@ -462,7 +371,6 @@ if (magicSave) {
         magicConfig.rtFormat = forceRtFormat ? forceRtFormat.value : '12';
         magicConfig.rtTolerance = (forceRtTolerance && forceRtTolerance.value !== '') ? parseInt(forceRtTolerance.value, 10) : 3;
         
-        saveCurrentLaps();
         saveCurrentPauseMs();
         
         localStorage.setItem('magicConfig', JSON.stringify(magicConfig));

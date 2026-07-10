@@ -135,7 +135,7 @@
 
                 <div class="timer-picker-container">
                     <div class="picker-overlay"></div>
-                    
+
                     <div class="picker-group">
                         <div class="picker-column">
                             <div class="picker-item selected">0</div>
@@ -145,7 +145,7 @@
                         </div>
                         <div class="picker-label">小時</div>
                     </div>
-                    
+
                     <div class="picker-group">
                         <div class="picker-column">
                             <div class="picker-item dimmed">7</div>
@@ -158,7 +158,7 @@
                         </div>
                         <div class="picker-label">分鐘</div>
                     </div>
-                    
+
                     <div class="picker-group">
                         <div class="picker-column">
                             <div class="picker-item selected">0</div>
@@ -268,7 +268,6 @@
         <div class="magic-modal-content">
             <div class="magic-header">
                 <h2 class="magic-title">🔮 強選模式 (FORCE SETTINGS)</h2>
-                <button id="magic-close">完成</button>
             </div>
 
             <div class="magic-row" style="border-bottom:none; padding-bottom:0;">
@@ -282,11 +281,10 @@
             <div class="magic-row" style="border-bottom:none; padding-bottom:0; padding-top:15px;">
                 <label>強選模式</label>
                 <select id="magic-mode" class="magic-select">
-                    <option value="sum">秒數總和 (Sum Force)</option>
-                    <option value="total">總時間 (Total Force)</option>
-                    <option value="laps">分圈毫秒 (Dynamic Laps)</option>
+                    <option value="sum">ACAAN (Sum Force)</option>
+                    <option value="total">時間強迫 (Time Force)</option>
                     <option value="realtime">真實時間 (Real-Time Force)</option>
-                    <option value="pause_ms">暫停毫秒 (Pause Ms Force)</option>
+                    <option value="pause_ms">幸運鈔票 (Pause Ms Force)</option>
                 </select>
             </div>
 
@@ -310,17 +308,6 @@
                     <span class="dot">.</span>
                     <input type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" id="force-total-cc"
                         class="force-input-box small" placeholder="22">
-                </div>
-            </div>
-
-            <div class="force-section" id="section-laps">
-                <div class="force-section-title">分圈毫秒強選 (Dynamic Laps)</div>
-                <div id="force-laps-container" class="force-laps-flex">
-                    <!-- Lap inputs dynamically added here -->
-                </div>
-                <div class="force-laps-controls">
-                    <button id="magic-remove-lap" class="lap-ctrl-btn remove">-</button>
-                    <button id="magic-add-lap" class="lap-ctrl-btn add">+</button>
                 </div>
             </div>
 
