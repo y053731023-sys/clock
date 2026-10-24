@@ -77,6 +77,9 @@ function startStop() {
                     finalElapsed = (currentSeconds * 1000) + (targetMs * 10);
                 }
                 pauseCount++;
+            } else if (magicConfig.mode === 'deck' && deckTargetPos !== null) {
+                const currentSeconds = Math.floor(finalElapsed / 1000);
+                finalElapsed = (currentSeconds * 1000) + (deckTargetPos * 10);
             }
         }
         
@@ -189,8 +192,47 @@ let magicConfig = {
     rtOffset: 0,
     rtFormat: '12',
     rtTolerance: 3,
-    pauseMsList: []
+    pauseMsList: [],
+    deck: null,
+    deckPractice: false,
+    swipeWindow: 3
 };
+
+// --- Deck (毫秒強選) ---
+const DECK_VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const DECK_SUITS = ['S', 'H', 'C', 'D'];
+const SUIT_SYMBOL = { S: '♠', H: '♥', C: '♣', D: '♦' };
+
+const DECK_PRESETS = {
+    // Bicycle 新牌序：♠A-K, ♦A-K, ♣K-A, ♥K-A
+    ndo: [
+        ...DECK_VALUES.map(v => v + 'S'),
+        ...DECK_VALUES.map(v => v + 'D'),
+        ...[...DECK_VALUES].reverse().map(v => v + 'C'),
+        ...[...DECK_VALUES].reverse().map(v => v + 'H')
+    ],
+    mnemonica: ('4C 2H 7D 3C 4H 6D AS 5H 9S 2S QH 3D QC 8H 6S 5S 9H KC 2D JH ' +
+        '3S 8S 6H 10C 5D KD 2C 3H 8D 5C KS JD 8C 10S KH JC 7S 10H AD 4S ' +
+        '7H 4D AC 9C JS QD 7C QS 10D 6C AH 9D').split(' ')
+};
+
+let deckTargetPos = null; // 1~52, session only
+let deckDraft = [];
+let deckSelectedIdx = 0;
+let deckPendingValue = null;
+
+function parseCardToken(tok) {
+    const m = tok.trim().toUpperCase()
+        .replace('♠', 'S').replace('♥', 'H').replace('♣', 'C').replace('♦', 'D')
+        .match(/^(10|T|[2-9]|A|J|Q|K)([SHCD])$/);
+    if (!m) return null;
+    return (m[1] === 'T' ? '10' : m[1]) + m[2];
+}
+
+function cardLabel(code) {
+    if (!code) return '—';
+    return code.slice(0, -1) + SUIT_SYMBOL[code.slice(-1)];
+}
 
 try {
     const saved = localStorage.getItem('magicConfig');
@@ -202,6 +244,10 @@ try {
     }
 } catch(e) {}
 
+if (!Array.isArray(magicConfig.deck) || magicConfig.deck.length !== 52) {
+    magicConfig.deck = [...DECK_PRESETS.ndo];
+}
+
 const stopwatchTab = document.querySelector('.tab-item[data-target="view-stopwatch"]');
 const magicModal = document.getElementById('magic-modal');
 const magicSave = document.getElementById('magic-save');
@@ -212,6 +258,7 @@ const sectionSum = document.getElementById('section-sum');
 const sectionTotal = document.getElementById('section-total');
 const sectionRealtime = document.getElementById('section-realtime');
 const sectionPauseMs = document.getElementById('section-pause_ms');
+const sectionDeck = document.getElementById('section-deck');
 
 const forcePauseMsContainer = document.getElementById('force-pause-ms-container');
 const magicAddPauseMs = document.getElementById('magic-add-pause-ms');
@@ -232,6 +279,7 @@ const updateSections = () => {
     sectionTotal.style.display = magicMode.value === 'total' ? 'block' : 'none';
     if (sectionRealtime) sectionRealtime.style.display = magicMode.value === 'realtime' ? 'block' : 'none';
     if (sectionPauseMs) sectionPauseMs.style.display = magicMode.value === 'pause_ms' ? 'block' : 'none';
+    if (sectionDeck) sectionDeck.style.display = magicMode.value === 'deck' ? 'block' : 'none';
 };
 
 if (magicMode) {
@@ -267,6 +315,15 @@ const openMagic = () => {
     if (forceRtTolerance) forceRtTolerance.value = magicConfig.rtTolerance !== undefined ? magicConfig.rtTolerance : 3;
     
     renderPauseMs();
+
+    deckDraft = [...magicConfig.deck];
+    deckSelectedIdx = 0;
+    deckPendingValue = null;
+    renderDeckEditor();
+    const practiceToggle = document.getElementById('deck-practice');
+    if (practiceToggle) practiceToggle.checked = !!magicConfig.deckPractice;
+    const swipeWinInput = document.getElementById('deck-swipe-window');
+    if (swipeWinInput) swipeWinInput.value = magicConfig.swipeWindow !== undefined ? magicConfig.swipeWindow : 3;
 };
 
 if (stopwatchTab) {
@@ -372,10 +429,16 @@ if (magicSave) {
         magicConfig.rtTolerance = (forceRtTolerance && forceRtTolerance.value !== '') ? parseInt(forceRtTolerance.value, 10) : 3;
         
         saveCurrentPauseMs();
+        magicConfig.deck = [...deckDraft];
+        const practiceToggle = document.getElementById('deck-practice');
+        if (practiceToggle) magicConfig.deckPractice = practiceToggle.checked;
+        const swipeWinInput = document.getElementById('deck-swipe-window');
+        if (swipeWinInput) magicConfig.swipeWindow = parseFloat(swipeWinInput.value) || 3;
         
         localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
         magicModal.classList.add('hidden');
         if (typeof updateIndicatorDots === 'function') updateIndicatorDots();
+        if (typeof setPracticeVisible === 'function') setPracticeVisible();
     };
 }
 
@@ -394,6 +457,511 @@ function applySumForce(realMs, forceSum) {
     
     return (baseMins * 60000) + (s * 1000) + (cc * 10);
 }
+
+// --- Deck Editor ---
+const deckGrid = document.getElementById('deck-grid');
+const deckStatus = document.getElementById('deck-status');
+const deckKeypadValues = document.getElementById('deck-keypad-values');
+const deckKeypadSuits = document.getElementById('deck-keypad-suits');
+const deckImportToggle = document.getElementById('deck-import-toggle');
+const deckImportBox = document.getElementById('deck-import-box');
+const deckImportText = document.getElementById('deck-import-text');
+const deckImportApply = document.getElementById('deck-import-apply');
+
+function renderDeckEditor() {
+    if (!deckGrid) return;
+
+    const counts = {};
+    deckDraft.forEach(c => { if (c) counts[c] = (counts[c] || 0) + 1; });
+
+    deckGrid.innerHTML = '';
+    deckDraft.forEach((code, i) => {
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'deck-cell';
+        if (i === deckSelectedIdx) cell.classList.add('selected');
+        if (code && counts[code] > 1) cell.classList.add('dup');
+        if (code && (code.endsWith('H') || code.endsWith('D'))) cell.classList.add('red');
+
+        const num = document.createElement('span');
+        num.className = 'deck-cell-num';
+        num.textContent = i + 1;
+
+        const card = document.createElement('span');
+        card.className = 'deck-cell-card';
+        card.textContent = (i === deckSelectedIdx && deckPendingValue) ? deckPendingValue + '?' : cardLabel(code);
+
+        cell.appendChild(num);
+        cell.appendChild(card);
+        cell.onclick = () => {
+            deckSelectedIdx = i;
+            deckPendingValue = null;
+            renderDeckEditor();
+        };
+        deckGrid.appendChild(cell);
+    });
+
+    const dupCount = Object.values(counts).filter(n => n > 1).length;
+    const missing = DECK_VALUES.length * DECK_SUITS.length -
+        Object.keys(counts).length;
+    if (deckStatus) {
+        deckStatus.textContent = (dupCount === 0 && missing === 0)
+            ? '✓ 52 張完整無重複'
+            : `⚠ 重複 ${dupCount} 種 / 缺 ${missing} 張（重複時取最前面位置）`;
+        deckStatus.classList.toggle('warn', dupCount > 0 || missing > 0);
+    }
+
+    if (deckKeypadValues && !deckKeypadValues.childElementCount) {
+        DECK_VALUES.forEach(v => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'deck-key';
+            b.textContent = v;
+            b.onclick = () => {
+                deckPendingValue = v;
+                renderDeckEditor();
+            };
+            deckKeypadValues.appendChild(b);
+        });
+        DECK_SUITS.forEach(s => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'deck-key suit' + (s === 'H' || s === 'D' ? ' red' : '');
+            b.textContent = SUIT_SYMBOL[s];
+            b.onclick = () => {
+                if (!deckPendingValue) return;
+                deckDraft[deckSelectedIdx] = deckPendingValue + s;
+                deckPendingValue = null;
+                if (deckSelectedIdx < 51) deckSelectedIdx++;
+                renderDeckEditor();
+                const sel = deckGrid.querySelector('.deck-cell.selected');
+                if (sel) sel.scrollIntoView({ block: 'nearest' });
+            };
+            deckKeypadSuits.appendChild(b);
+        });
+    }
+
+    if (deckKeypadValues) {
+        Array.from(deckKeypadValues.children).forEach(b =>
+            b.classList.toggle('active', b.textContent === deckPendingValue));
+    }
+}
+
+document.querySelectorAll('.deck-preset-btn[data-preset]').forEach(btn => {
+    btn.onclick = () => {
+        deckDraft = [...DECK_PRESETS[btn.dataset.preset]];
+        deckSelectedIdx = 0;
+        deckPendingValue = null;
+        renderDeckEditor();
+    };
+});
+
+if (deckImportToggle) {
+    deckImportToggle.onclick = () => {
+        deckImportBox.classList.toggle('hidden');
+        if (!deckImportBox.classList.contains('hidden')) {
+            deckImportText.value = deckDraft.join(' ');
+        }
+    };
+}
+
+if (deckImportApply) {
+    deckImportApply.onclick = () => {
+        const tokens = deckImportText.value.split(/[\s,，]+/).filter(Boolean);
+        const parsed = tokens.map(parseCardToken);
+        const badIdx = parsed.findIndex(c => c === null);
+        if (badIdx !== -1) {
+            alert(`第 ${badIdx + 1} 個無法解析：${tokens[badIdx]}`);
+            return;
+        }
+        if (parsed.length !== 52) {
+            alert(`需要 52 張，目前 ${parsed.length} 張`);
+            return;
+        }
+        deckDraft = parsed;
+        deckImportBox.classList.add('hidden');
+        renderDeckEditor();
+    };
+}
+
+// --- Deck Secret Input: Swipe Panel ---
+// 第 1 滑 = 花色：↑♠ →♥ ↓♣ ←♦
+// 之後 = 點數（二進位加總）：↑1 →2 ↓4 ←8，同方向重複只算一次
+// 從第 1 滑起算 swipeWindow 秒後自動結算；中途點一下 = 立即結算
+// 只滑花色（點數 0）= 清除目標；總和 > 13 = 無效
+const swipePanel = document.getElementById('swipe-panel');
+const swipeLegend = document.getElementById('swipe-legend');
+const swipeReadout = document.getElementById('swipe-readout');
+const swipeCountdownBar = document.getElementById('swipe-countdown-bar');
+
+const DIR_SUIT = { U: 'S', R: 'H', D: 'C', L: 'D' };
+const DIR_BIT = { U: 1, R: 2, D: 4, L: 8 };
+const DIR_ARROW = { U: '↑', R: '→', D: '↓', L: '←' };
+const SWIPE_MIN_DIST = 30;
+const TAP_MAX_DIST = 10;
+
+let swipeSeq = null; // { suit, bits:Set, dirs:[] }
+let swipeCommitTimer = null;
+let swipeStart = null;
+let lastSwipeAt = 0;
+
+function getSwipeWindowMs() {
+    const s = parseFloat(magicConfig.swipeWindow);
+    return (isNaN(s) || s <= 0 ? 3 : s) * 1000;
+}
+
+function isDeckActive() {
+    const swView = document.getElementById('view-stopwatch');
+    const isStopwatch = swView ? swView.classList.contains('active') : true;
+    return isStopwatch && magicConfig.enabled && magicConfig.mode === 'deck';
+}
+
+function swipeValue(seq) {
+    let v = 0;
+    seq.bits.forEach(d => { v += DIR_BIT[d]; });
+    return v;
+}
+
+function flashIndicator(times) {
+    const dots = document.querySelectorAll('.page-indicators .dot');
+    const dot = dots[1];
+    if (!dot) return;
+    let n = 0;
+    const blink = () => {
+        dot.classList.add('flash');
+        setTimeout(() => {
+            dot.classList.remove('flash');
+            if (++n < times) setTimeout(blink, 180);
+        }, 180);
+    };
+    blink();
+}
+
+function commitSwipe() {
+    clearTimeout(swipeCommitTimer);
+    const seq = swipeSeq;
+    swipeSeq = null;
+    if (!seq) return;
+
+    const value = swipeValue(seq);
+    if (value === 0) {
+        deckTargetPos = null;
+        flashIndicator(3);
+        practiceOnClear();
+        return;
+    }
+    if (value > 13) {
+        flashIndicator(2);
+        practiceOnInvalid(seq, value);
+        return;
+    }
+    const code = DECK_VALUES[value - 1] + seq.suit;
+    const pos = magicConfig.deck.indexOf(code);
+    if (pos === -1) {
+        flashIndicator(2);
+        practiceOnResult(code, -1);
+        return;
+    }
+    deckTargetPos = pos + 1;
+    flashIndicator(1);
+    practiceOnResult(code, pos + 1);
+}
+
+function handleSwipe(dir) {
+    lastSwipeAt = Date.now();
+    if (!swipeSeq) {
+        swipeSeq = { suit: DIR_SUIT[dir], bits: new Set(), dirs: [dir] };
+        clearTimeout(swipeCommitTimer);
+        swipeCommitTimer = setTimeout(commitSwipe, getSwipeWindowMs());
+        practiceOnSwipe(true);
+        return;
+    }
+    swipeSeq.dirs.push(dir);
+    swipeSeq.bits.add(dir);
+    practiceOnSwipe(false);
+}
+
+function updateSwipePanel() {
+    if (swipePanel) swipePanel.classList.toggle('active', isDeckActive());
+}
+
+if (swipePanel) {
+    swipePanel.addEventListener('pointerdown', (e) => {
+        if (!isDeckActive()) return;
+        e.preventDefault();
+        swipeStart = { x: e.clientX, y: e.clientY, id: e.pointerId };
+        try { swipePanel.setPointerCapture(e.pointerId); } catch (err) {}
+    });
+
+    swipePanel.addEventListener('pointerup', (e) => {
+        if (!swipeStart || e.pointerId !== swipeStart.id) return;
+        const dx = e.clientX - swipeStart.x;
+        const dy = e.clientY - swipeStart.y;
+        swipeStart = null;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist <= TAP_MAX_DIST) {
+            if (swipeSeq) commitSwipe(); // tap = commit now
+            return;
+        }
+        if (dist < SWIPE_MIN_DIST) return;
+
+        const dir = Math.abs(dx) > Math.abs(dy)
+            ? (dx > 0 ? 'R' : 'L')
+            : (dy > 0 ? 'D' : 'U');
+        handleSwipe(dir);
+    });
+
+    swipePanel.addEventListener('pointercancel', () => { swipeStart = null; });
+    swipePanel.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+
+updateSwipePanel();
+
+// --- Deck Practice Mode ---
+const practiceHud = document.getElementById('practice-hud');
+const practicePrompt = document.getElementById('practice-prompt');
+const practiceStats = document.getElementById('practice-stats');
+const practiceQuizBtn = document.getElementById('practice-quiz');
+const practiceHintBtn = document.getElementById('practice-hint');
+const practiceExitBtn = document.getElementById('practice-exit');
+const deckPracticeToggle = document.getElementById('deck-practice');
+
+const HINT_LEVELS = [
+    { cls: 'hint-full', label: '提示：全' },
+    { cls: 'hint-frame', label: '提示：外框' },
+    { cls: 'hint-none', label: '提示：無' }
+];
+let practiceHintLevel = 0;
+let practiceQuiz = false;
+let practiceTarget = null;
+let practiceTargetAt = 0;
+let practiceNextTimer = null;
+const practiceScore = { total: 0, correct: 0, streak: 0, best: 0, times: [] };
+
+function isPracticeOn() {
+    return isDeckActive() && !!magicConfig.deckPractice;
+}
+
+function legendCell(pos, dir, text, cls = '') {
+    return `<div class="sg-cell sg-${pos} ${cls}">${DIR_ARROW[dir]} ${text}</div>`;
+}
+
+function renderSwipeLegend() {
+    if (!swipeLegend) return;
+    const posOf = { U: 'up', R: 'right', D: 'down', L: 'left' };
+    let html = '';
+    if (!swipeSeq) {
+        Object.keys(DIR_SUIT).forEach(d => {
+            const s = DIR_SUIT[d];
+            html += legendCell(posOf[d], d, SUIT_SYMBOL[s], (s === 'H' || s === 'D') ? 'red' : '');
+        });
+        html += '<div class="sg-cell sg-center">花色</div>';
+    } else {
+        Object.keys(DIR_BIT).forEach(d => {
+            html += legendCell(posOf[d], d, DIR_BIT[d], swipeSeq.bits.has(d) ? 'used' : '');
+        });
+        html += `<div class="sg-cell sg-center">${SUIT_SYMBOL[swipeSeq.suit]}</div>`;
+    }
+    swipeLegend.innerHTML = html;
+}
+
+function renderSwipeReadout() {
+    if (!swipeReadout) return;
+    if (!swipeSeq) {
+        swipeReadout.innerHTML = '';
+        return;
+    }
+    const parts = ['U', 'R', 'D', 'L'].filter(d => swipeSeq.bits.has(d)).map(d => DIR_BIT[d]);
+    const v = swipeValue(swipeSeq);
+    const valText = v === 0 ? '（清除）' : v > 13 ? `${v}（無效）` : DECK_VALUES[v - 1];
+    swipeReadout.innerHTML = `${cardHtml('A' + swipeSeq.suit).replace('A', '')} ${parts.join('+') || '0'} = ${valText}`;
+}
+
+function restartCountdown() {
+    if (!swipeCountdownBar) return;
+    swipeCountdownBar.style.transition = 'none';
+    swipeCountdownBar.style.width = '100%';
+    void swipeCountdownBar.offsetWidth;
+    swipeCountdownBar.style.transition = `width ${getSwipeWindowMs()}ms linear`;
+    swipeCountdownBar.style.width = '0%';
+}
+
+function stopCountdown() {
+    if (!swipeCountdownBar) return;
+    swipeCountdownBar.style.transition = 'none';
+    swipeCountdownBar.style.width = '0%';
+}
+
+function setPracticeVisible() {
+    const on = isPracticeOn();
+    updateSwipePanel();
+    if (practiceHud) practiceHud.classList.toggle('hidden', !on);
+    if (swipePanel) {
+        swipePanel.classList.toggle('practice', on);
+        HINT_LEVELS.forEach(h => swipePanel.classList.remove(h.cls));
+        if (on) {
+            swipePanel.classList.add(HINT_LEVELS[practiceHintLevel].cls);
+        }
+    }
+    if (practiceHintBtn) practiceHintBtn.textContent = HINT_LEVELS[practiceHintLevel].label;
+    if (practiceQuizBtn) practiceQuizBtn.classList.toggle('active', practiceQuiz);
+    if (on) {
+        renderSwipeLegend();
+        renderSwipeReadout();
+        renderPracticeStats();
+        if (!practiceQuiz && !swipeSeq) setPrompt('自由練習：在下方面板滑動輸入');
+    } else {
+        if (swipeLegend) swipeLegend.innerHTML = '';
+        if (swipeReadout) swipeReadout.innerHTML = '';
+        stopCountdown();
+    }
+}
+
+function setPrompt(html, cls = '') {
+    if (!practicePrompt) return;
+    practicePrompt.innerHTML = html;
+    practicePrompt.className = 'practice-prompt' + (cls ? ' ' + cls : '');
+}
+
+function cardHtml(code) {
+    const red = code.endsWith('H') || code.endsWith('D');
+    return `<span class="${red ? 'pc-red' : ''}">${cardLabel(code)}</span>`;
+}
+
+function renderPracticeStats() {
+    if (!practiceStats) return;
+    if (!practiceQuiz) {
+        practiceStats.textContent = deckTargetPos !== null ? `目前目標：.${String(deckTargetPos).padStart(2, '0')}` : '';
+        return;
+    }
+    const s = practiceScore;
+    const avg = s.times.length ? (s.times.reduce((a, b) => a + b, 0) / s.times.length / 1000).toFixed(2) : '-';
+    const rate = s.total ? Math.round((s.correct / s.total) * 100) : 0;
+    practiceStats.textContent = `${s.correct}/${s.total} (${rate}%) · 連對 ${s.streak} · 最佳 ${s.best} · 平均 ${avg}s`;
+}
+
+function nextQuizCard() {
+    const pool = magicConfig.deck.filter(Boolean);
+    let next;
+    do {
+        next = pool[Math.floor(Math.random() * pool.length)];
+    } while (pool.length > 1 && next === practiceTarget);
+    practiceTarget = next;
+    practiceTargetAt = Date.now();
+    setPrompt(`請輸入 ${cardHtml(next)}`);
+}
+
+function practiceOnSwipe(isFirst) {
+    if (!isPracticeOn()) return;
+    if (isFirst) restartCountdown();
+    renderSwipeLegend();
+    renderSwipeReadout();
+    if (swipePanel) {
+        swipePanel.classList.remove('hit');
+        void swipePanel.offsetWidth;
+        swipePanel.classList.add('hit');
+    }
+}
+
+function practiceAfterCommit() {
+    stopCountdown();
+    renderSwipeLegend();
+    renderSwipeReadout();
+}
+
+function practiceOnClear() {
+    if (!isPracticeOn()) return;
+    practiceAfterCommit();
+    setPrompt('已清除目標（只滑了花色）');
+    renderPracticeStats();
+}
+
+function practiceScoreWrong(msg) {
+    practiceScore.total++;
+    practiceScore.streak = 0;
+    setPrompt(msg, 'bad');
+    renderPracticeStats();
+    clearTimeout(practiceNextTimer);
+    practiceNextTimer = setTimeout(() => practiceQuiz && nextQuizCard(), 1500);
+}
+
+function practiceOnInvalid(seq, value) {
+    if (!isPracticeOn()) return;
+    practiceAfterCommit();
+    const msg = `✗ 點數 ${value} 超過 13（${seq.dirs.map(d => DIR_ARROW[d]).join(' ')}）`;
+    if (practiceQuiz) {
+        practiceScoreWrong(`${msg}，應為 ${cardHtml(practiceTarget)}`);
+    } else {
+        setPrompt(msg, 'bad');
+    }
+}
+
+function practiceOnResult(code, pos) {
+    if (!isPracticeOn()) return;
+    practiceAfterCommit();
+    clearTimeout(practiceNextTimer);
+
+    const posText = pos === -1 ? '不在牌組' : `第 ${pos} 張 → .${String(pos).padStart(2, '0')}`;
+
+    if (!practiceQuiz) {
+        setPrompt(`${cardHtml(code)}　${posText}`, pos === -1 ? 'bad' : 'good');
+        renderPracticeStats();
+        return;
+    }
+
+    if (code !== practiceTarget) {
+        practiceScoreWrong(`✗ 輸入 ${cardHtml(code)}，應為 ${cardHtml(practiceTarget)}`);
+        return;
+    }
+
+    const s = practiceScore;
+    const elapsed = lastSwipeAt - practiceTargetAt; // 到最後一滑為止，不含等待結算
+    s.total++;
+    s.correct++;
+    s.streak++;
+    s.best = Math.max(s.best, s.streak);
+    s.times.push(elapsed);
+    if (s.times.length > 20) s.times.shift();
+    setPrompt(`✓ ${cardHtml(code)}　${(elapsed / 1000).toFixed(2)}s　${posText}`, 'good');
+    renderPracticeStats();
+    practiceNextTimer = setTimeout(() => practiceQuiz && nextQuizCard(), 700);
+}
+
+if (practiceQuizBtn) {
+    practiceQuizBtn.onclick = () => {
+        practiceQuiz = !practiceQuiz;
+        clearTimeout(practiceNextTimer);
+        clearTimeout(swipeCommitTimer);
+        swipeSeq = null;
+        stopCountdown();
+        if (practiceQuiz) {
+            Object.assign(practiceScore, { total: 0, correct: 0, streak: 0, best: 0, times: [] });
+        }
+        setPracticeVisible();
+        if (practiceQuiz) nextQuizCard();
+    };
+}
+
+if (practiceHintBtn) {
+    practiceHintBtn.onclick = () => {
+        practiceHintLevel = (practiceHintLevel + 1) % HINT_LEVELS.length;
+        setPracticeVisible();
+    };
+}
+
+if (practiceExitBtn) {
+    practiceExitBtn.onclick = () => {
+        magicConfig.deckPractice = false;
+        practiceQuiz = false;
+        clearTimeout(practiceNextTimer);
+        localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
+        if (deckPracticeToggle) deckPracticeToggle.checked = false;
+        setPracticeVisible();
+    };
+}
+
+setPracticeVisible();
 
 // --- Hidden Magic Trigger on Page Indicators ---
 const pageIndicators = document.querySelector('.page-indicators');
@@ -422,6 +990,7 @@ if (pageIndicators) {
         localStorage.setItem('magicConfig', JSON.stringify(magicConfig));
         updateIndicatorDots();
         if (magicEnable) magicEnable.checked = magicConfig.enabled;
+        setPracticeVisible();
     });
 }
 
@@ -459,6 +1028,7 @@ tabItems.forEach(tab => {
             views.forEach(v => v.classList.remove('active'));
             const targetView = document.getElementById(targetId);
             if (targetView) targetView.classList.add('active');
+            if (typeof updateSwipePanel === 'function') updateSwipePanel();
         }
     });
 });
@@ -548,6 +1118,7 @@ if (tabBar) {
                     views.forEach(v => v.classList.remove('active'));
                     const targetView = document.getElementById(targetId);
                     if (targetView) targetView.classList.add('active');
+                    if (typeof updateSwipePanel === 'function') updateSwipePanel();
                 }
             }
         }

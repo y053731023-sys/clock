@@ -106,6 +106,15 @@
 
             <!-- Stopwatch View -->
             <div id="view-stopwatch" class="view active">
+                <div id="practice-hud" class="practice-hud hidden">
+                    <div id="practice-prompt" class="practice-prompt"></div>
+                    <div id="practice-stats" class="practice-stats"></div>
+                    <div class="practice-actions">
+                        <button type="button" id="practice-quiz" class="practice-btn">測驗</button>
+                        <button type="button" id="practice-hint" class="practice-btn">提示：全</button>
+                        <button type="button" id="practice-exit" class="practice-btn exit">結束練習</button>
+                    </div>
+                </div>
                 <div class="display-section">
                     <h1 id="time-display">00:00.00</h1>
                 </div>
@@ -123,6 +132,12 @@
 
                 <div class="laps-section">
                     <ul id="laps-list"></ul>
+                </div>
+
+                <div id="swipe-panel" class="swipe-panel">
+                    <div id="swipe-countdown-bar" class="swipe-countdown-bar"></div>
+                    <div id="swipe-readout" class="swipe-readout"></div>
+                    <div id="swipe-legend" class="swipe-legend"></div>
                 </div>
             </div>
 
@@ -285,6 +300,7 @@
                     <option value="total">時間強迫 (Time Force)</option>
                     <option value="realtime">真實時間 (Real-Time Force)</option>
                     <option value="pause_ms">幸運鈔票 (Pause Ms Force)</option>
+                    <option value="deck">毫秒強選 (Deck Ms Force)</option>
                 </select>
             </div>
 
@@ -346,6 +362,56 @@
                 <div class="force-laps-controls">
                     <button id="magic-remove-pause-ms" class="lap-ctrl-btn remove">-</button>
                     <button id="magic-add-pause-ms" class="lap-ctrl-btn add">+</button>
+                </div>
+            </div>
+
+            <div class="force-section" id="section-deck" style="display: none;">
+                <div class="force-section-title">牌組毫秒強選 (Deck Ms Force)</div>
+
+                <div class="magic-row deck-practice-row">
+                    <label>練習模式（主畫面顯示滑動面板 / 測驗）</label>
+                    <label class="switch">
+                        <input type="checkbox" id="deck-practice">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="magic-row" style="padding-top:0;">
+                    <label>滑動輸入倒數（秒）</label>
+                    <input type="number" id="deck-swipe-window" class="force-input-box small" style="width:70px; font-size:1.1rem; padding:8px 5px;" value="3" min="1" max="10" step="0.5">
+                </div>
+
+                <div class="deck-presets">
+                    <button type="button" class="deck-preset-btn" data-preset="ndo">新牌序</button>
+                    <button type="button" class="deck-preset-btn" data-preset="mnemonica">Mnemonica</button>
+                    <button type="button" class="deck-preset-btn" id="deck-import-toggle">文字匯入</button>
+                </div>
+
+                <div id="deck-import-box" class="deck-import-box hidden">
+                    <textarea id="deck-import-text" class="deck-import-text" rows="4"
+                        placeholder="以空白/逗號分隔，例：AS 2S 3S ... 10H JH QH KH&#10;花色 S H C D 或 ♠♥♣♦"></textarea>
+                    <button type="button" class="deck-preset-btn wide" id="deck-import-apply">套用</button>
+                </div>
+
+                <div id="deck-status" class="deck-status"></div>
+
+                <div id="deck-grid" class="deck-grid">
+                    <!-- 52 cells rendered by JS -->
+                </div>
+
+                <div class="deck-keypad">
+                    <div class="deck-keypad-label">點選格子後輸入：點數 → 花色（自動跳下一格）</div>
+                    <div id="deck-keypad-values" class="deck-keypad-row values"></div>
+                    <div id="deck-keypad-suits" class="deck-keypad-row suits"></div>
+                </div>
+
+                <div class="realtime-desc deck-help">
+                    <b>主畫面底部滑動暗輸入</b>（第 1 滑起 3 秒內完成，或點一下面板立即送出）：<br>
+                    <b>第 1 滑＝花色</b>：<code>↑ 黑桃 ♠</code> ｜ <code>→ 紅心 ♥</code> ｜ <code>↓ 梅花 ♣</code> ｜ <code>← 方塊 ♦</code><br>
+                    <b>後續滑＝點數</b>（二進位加總）：<code>↑ 1</code> ｜ <code>→ 2</code> ｜ <code>↓ 4</code> ｜ <code>← 8</code><br>
+                    範例：<code>3 = ↑ + →</code>、<code>7 = ↑ + → + ↓</code>、<code>K(13) = ↑ + ↓ + ←</code><br>
+                    若只滑花色未滑數字＝清除目標。<br>
+                    按停止時毫秒＝該牌在牌組位置（例：第 18 張 → xx.18）
                 </div>
             </div>
 
